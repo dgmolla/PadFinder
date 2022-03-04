@@ -1,5 +1,5 @@
-index.js
 firebase.ts
+smtp.ts
 node_modules/
 .vscode/
 dist/

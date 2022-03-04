@@ -1,14 +1,15 @@
 import {parse} from 'node-html-parser';
 import {db, ref, get, set} from './firebase';
+import {sendEmail} from './smtp';
 
 const axios = require('axios').default;
 
-const getAptString = async (url:string) => {
+const getSearchResults = async (url : string) => {
     try {
         const response = await axios.get(url) 
         const resultsHTML = getSearchResultsHTML(response.data)['childNodes'];
         
-        const resultsToCheck = [];
+        const resultsToCheck : string[][] = [];
         
         resultsHTML.forEach( result => {
 
@@ -21,15 +22,30 @@ const getAptString = async (url:string) => {
             }
         })
 
-        const newResults = checkForNewResults(resultsToCheck);
+        let newResultLinks = "";
+        const newResults = await checkForNewResults(resultsToCheck);
 
+        if (!newResults || newResults.length == 0 || !newResults[0]) {
+            console.log("No new search results! We'll try again in a bit :)")
+            return;
+
+        } else {
+            newResults.map( newResult => {
+                newResultLinks += newResult[1] + "\n";
+            })
+            
+            sendEmail(newResultLinks);
+            console.log("Looks like we found some new Pads! Check your email homie!!")
+            return
+        }
 
     } catch (err) {
         console.log(err)
+        return
     }
 }
 
-const getSearchResultsHTML = (string:string) => {
+const getSearchResultsHTML = (string : string) => {
     const root = parse(string);
     const res = root.querySelector('#search-results');
     
@@ -37,26 +53,25 @@ const getSearchResultsHTML = (string:string) => {
 }
 
 //are any of the search results ones we haven't seen before?
-const checkForNewResults = async (resultsToCheck) => {
+const checkForNewResults = async (resultsToCheck : string[][]) => {
     try {
         //first, make a set of seen result id's from db
-        const seenIDs = await get(ref(db, 'apartments'));
-        const seenIDsSet = new Set(seenIDs.val());
+        const seenIDsRef = await get(ref(db, 'apartments'));
+        const seenIDs = await seenIDsRef.val();
 
         //then, remove id's we've seen before
-        resultsToCheck.filter( result => {
-            !seenIDsSet.has(result[0]);
+        let newResults = resultsToCheck.filter( result => {
+            return !seenIDs.hasOwnProperty(result[0]);
         })
 
         //remaining ids in array are new, add them to db and return them
         Promise.all(
-            resultsToCheck.map(async id => {
-                await set(ref(db, 'apartments/' + id), id);
-                console.log(id);
-            })
+            newResults.map(async result => {
+                await set(ref(db, 'apartments/' + result[0]), result[0]);
+        })
         )
 
-        return resultsToCheck;
+        return newResults;
 
     } catch (error) {
         console.log(error);
@@ -64,4 +79,5 @@ const checkForNewResults = async (resultsToCheck) => {
     }
 }
 
-getAptString('https://losangeles.craigslist.org/search/apa?query=west+hollywood&max_price=4600&min_bedrooms=3&max_bedrooms=3&availabilityMode=0&sale_date=all+dates');
+getSearchResults('https://losangeles.craigslist.org/search/apa?query=west+hollywood&max_price=5000&min_bedrooms=3&max_bedrooms=3&availabilityMode=0&sale_date=all+dates');
+
