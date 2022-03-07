@@ -4,8 +4,9 @@ import {sendEmail} from './smtp';
 
 const axios = require('axios').default;
 
-const getSearchResults = async (url : string) => {
+const checkForNewResults = async (url : string) => {
     try {
+        //GET request
         const response = await axios.get(url) 
         const resultsHTML = getSearchResultsHTML(response.data)['childNodes'];
         
@@ -23,7 +24,7 @@ const getSearchResults = async (url : string) => {
         })
 
         let newResultLinks = "";
-        const newResults = await checkForNewResults(resultsToCheck);
+        const newResults = await validateResults(resultsToCheck);
 
         if (!newResults || newResults.length == 0 || !newResults[0]) {
             console.log("No new search results! We'll try again in a bit")
@@ -54,7 +55,7 @@ const getSearchResultsHTML = (string : string) => {
 }
 
 //are any of the search results ones we haven't seen before?
-const checkForNewResults = async (resultsToCheck : string[][]) => {
+const validateResults = async (resultsToCheck : string[][]) => {
     try {
         //first, make a set of seen result id's from db
         const seenIDsRef = await get(ref(db, 'apartments'));
@@ -81,6 +82,4 @@ const checkForNewResults = async (resultsToCheck : string[][]) => {
 }
 const url : string = 'https://losangeles.craigslist.org/search/apa?query=west+hollywood&max_price=5000&min_bedrooms=3&max_bedrooms=3&availabilityMode=0&sale_date=all+dates';
 
-getSearchResults(url);
-
-//setInterval(getSearchResults(url).then(value => console.log(value)), 1000 * 60 * 12);
+setInterval(async () => await checkForNewResults(url), 1000 * 60 * 60 * 12);
