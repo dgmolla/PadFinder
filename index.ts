@@ -26,17 +26,17 @@ const getSearchResults = async (url : string) => {
         const newResults = await checkForNewResults(resultsToCheck);
 
         if (!newResults || newResults.length == 0 || !newResults[0]) {
-            console.log("No new search results! We'll try again in a bit :)")
+            console.log("No new search results! We'll try again in a bit")
             return;
 
         } else {
             newResults.map( newResult => {
-                newResultLinks += newResult[1] + "\n";
+                newResultLinks += "<p>" + newResult[1] + "</p><br>";
             })
             
             sendEmail(newResultLinks);
-            console.log("Looks like we found some new Pads! Check your email homie!!")
-            return
+            console.log("Looks like we found some new Pads! Check your email dude")
+            return;
         }
 
     } catch (err) {
@@ -45,6 +45,7 @@ const getSearchResults = async (url : string) => {
     }
 }
 
+//parse html elements from search result page
 const getSearchResultsHTML = (string : string) => {
     const root = parse(string);
     const res = root.querySelector('#search-results');
@@ -78,6 +79,8 @@ const checkForNewResults = async (resultsToCheck : string[][]) => {
         return [];
     }
 }
+const url : string = 'https://losangeles.craigslist.org/search/apa?query=west+hollywood&max_price=5000&min_bedrooms=3&max_bedrooms=3&availabilityMode=0&sale_date=all+dates';
 
-getSearchResults('https://losangeles.craigslist.org/search/apa?query=west+hollywood&max_price=5000&min_bedrooms=3&max_bedrooms=3&availabilityMode=0&sale_date=all+dates');
+getSearchResults(url);
 
+//setInterval(getSearchResults(url).then(value => console.log(value)), 1000 * 60 * 12);
